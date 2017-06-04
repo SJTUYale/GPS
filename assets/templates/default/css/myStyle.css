@@ -1,0 +1,92 @@
+/*
+ * GPS网站专用CSS，对style.css有一些覆盖。
+ */
+
+a { color: #0078CF; }
+input, select, textarea { width: 100%; }
+
+/* header
+------------------------------------------------ */
+.img-brand { height: 6vw; padding: 0.5em; width: 100%; }
+.navbar-header label { color: white; margin-bottom: 0; font-size: 1.5em; padding: 1vw; }
+.navbar-header a { padding: 0; }
+.navbar-header #my-brand { padding: 15px; }
+.nav > li > a { padding-right: 5px; padding-left: 5px; }
+.my-navbar-right { float: right; }
+.my-navbar-right > a > div > span { width: 100%; text-align: center; background: black; }
+.container { margin-top: 6vw; }
+.nav-mod { background-color: lightgrey; border: 3px grey solid; }
+.nav-module { text-align: center; font-size: 2em; }
+.nav-module-selected { text-align: center; background-color: #0a3e7a}
+/* index
+------------------------------------------------- */
+
+.search-div { padding-left: 0; padding-right: 0; }
+.search-area { position: relative; margin-left: 0; margin-right: 0;}
+.search-btn { height: 100%; position: absolute; }
+.dataTable { margin-top: 1em; }
+.dataTable thead { background-color: #AAFFEE; }
+.dataTable tbody tr { background-color: white; }
+body { background-color: rgb(234, 246, 249); }
+span.dynatree-selected a { font-style: normal; color: black; }
+.fixed-left { position: fixed; top: 50vh; left: 0; }
+.sticky-right { position: fixed; top: 13vw; left:200vw; padding: 5px;
+    background-color: #00ddff; border: 3px #000000 solid; width: 60vw; }
+.noMargin { margin-left: 0; margin-right: 0; }
+.navbar-inverse { background-color: #0a3e7a; }
+
+.navbar-right li { float: right; }
+.navbar-nav > li > a > div { background-color: black; border-radius: 4px; }
+.navbar-nav > li > .lan-switch { padding-top: 30px; padding-bottom: 0; }
+
+
+/* disease list on search result page
+-------------------------------------------------- */
+.btn-primary { width: auto; }
+#filter-disease { margin-left: 0; margin-right: 0; position: absolute; background-color: lightgrey;
+    padding: 10px; border-radius: 3px; border: 3px white;}
+.filter-input-div { margin-right: 0; margin-left: 0; }
+.filter-input { padding: 0.2em; width: 100%; background-color: rgb(234, 246, 249); }
+#filter-submit { margin-top: 1em; float: right; }
+#filter-cancel { float: right; }
+.filter-holder { position: relative; float: right }
+.info-input { padding-left: 0; padding-right: 0; }
+.input-div { padding-left: 0; padding-right: 0; }
+
+.block-disease { margin-bottom: 2em; border: #2aabd2 solid 3px; padding: 5px; background-color: rgb(244, 255, 255); font-size: 1.2em;}
+.title-disease { font-size: 1.2em; }
+.title-disease a { color: #0000cc; }
+.title-disease a:hover { color: orangered; }
+.gene-disease a { color: #0078CF; }
+.description-disease { text-align: justify; }
+.others-disease a b { color: green; font-size: 1.2em; }
+.others-disease i { color: grey; float: right; }
+
+.block-color { height: 2em; width: 3em; background: rgb(0,255,0); cursor:pointer;}
+
+#input-endPage { width: 4vw; }
+
+/* disease page
+-------------------------------------------------- */
+
+.detail-title { color: red; font-size: 2em; }
+.detail-description { text-align: justify; }
+
+.badge-phenotype { font-size: 1em; }
+#picDialog { width: 63vw; height: 63vh; }
+#cy { width: 60vw; height: 60vh; }
+
+
+/* gene page
+-------------------------------------------------- */
+#detail-gene { margin: 0; }
+
+/* database page
+-------------------------------------------------- */
+.row-search { height: 50px; }
+.input-search { height: 100%; }
+.search-case { height: 100%; background-color: #00c0ef }
+
+/* my request
+-------------------------------------------------- */
+h3 a { color: #00b3ee; }
