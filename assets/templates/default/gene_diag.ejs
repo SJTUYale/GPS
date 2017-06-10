@@ -18,9 +18,9 @@
          -------------------------------------------------
          */
         $scope.getCaseResult = function () {
-            if ($scope.inputGuid == undefined || $scope.inputGuid == '') return;
+            if ($scope.checkguid == undefined || $scope.checkguid == '') return;
             $.ajax({
-                url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=check&user=guest&uid='+$scope.inputGuid,
+                url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=check&user=guest&uid='+$scope.checkguid,
                 success: function (data){
                     var parsed = $.parseJSON(data);
                     if (parsed.percentage != undefined){
@@ -121,7 +121,9 @@
                 Entryid: $scope.entryid,
                 Guid: $scope.Guid,
                 Patient: $scope.patient,
-                valid: true
+                tag: '',
+                ispatient: false,
+                valid: false
             })
             $('#myModal').modal('hide');
         }
@@ -172,7 +174,9 @@
                 type: $scope.type,
                 patient: $scope.patient,
                 genes: $scope.genes,
-                valid: true
+                tag: '',
+                ispatient: false,
+                valid: false
             });
             $scope.genes = [];
             $scope.fileName = '';
@@ -229,7 +233,6 @@
                 url: 'http://202.121.178.141/cgi-bin/MDPA/VCFupload.cgi',
                 additionalData: JSON.stringify({
                     guid: guid
-                    <%-userName && userName != '' ? ',user: '+userName : ''%>
                 }),
                 async: false,
                 type: 'POST',
@@ -242,26 +245,131 @@
             });
         }*/
         $scope.getguid = function () {
-            var guid = genguid();
-            $scope.Guid = guid;
-        }
-        $('#caseUpload').caseUploader({
-            caseInput: 'file',//file是本页一个input标签的id
-            url: 'http://202.121.178.141/cgi-bin/MDPA/VCFupload.cgi',
-            additionalData: JSON.stringify({
-                guid: $scope.Guid
-                <%-userName && userName != '' ? ',user: '+userName : ''%>
-            }),
-            callback: function(data, err) {
-                if (err && err != ''){
-                    alert(err);
+            $scope.Guid = genguid();
+            $('#caseUpload').caseUploader({
+                caseInput: 'file',//file是本页一个input标签的id
+                url: 'http://202.121.178.141/cgi-bin/MDPA/VCFupload.cgi',
+                additionalData: JSON.stringify({
+                    guid: $scope.Guid,
+                    <%-userName && userName != '' ? 'user: '+userName : ''%>
+                }),
+                callback: function(data, err) {
+                    if (err && err != ''){
+                        alert(err);
+                    }
                 }
-            }
-        });
+            });
+            $scope.$apply();
+        }
+
         //诊断函数
         $scope.diag = function () {
             var table = document.getElementById("grouptable");
+            var row = table.rows.length;
+            var col = table.rows[0].cells.length;
+            $scope.diagarray = [];
+            $scope.count = 0;
+            if (row > 1){
+                for (var i = 1; i < row; i++){
+                    var tdguid = $("#grouptable tr:eq(" + i + ") td:eq(1)").html();
+                    var tdtag  = $("#grouptable tr:eq(" + i + ") td:eq(3)").html();
+                    var tdpatient = $("#grouptable tr:eq(" + i + ") td:eq(4)").html();
+                    var tdselect = $("#grouptable tr:eq(" + i + ") td:eq(5)").html();
+                    tdtag = $(tdtag).get(0);
+                    tdselect = $(tdselect).get(0);
+                    tdpatient = $(tdpatient).get(0);
+                    if($scope.files[i-1].valid){
+                        $scope.count += 1;
+                        $scope.diagarray.push({
+                            guid: tdguid,
+                            ispatient: $scope.files[i-1].ispatient,
+                            tag: $scope.files[i-1].tag,
+                            selected: $scope.files[i-1].valid
+                        })
+                    }
+                }
+            }
+            //样本处理
 
+            if ($scope.count == 1){
+                //单一样本
+                var hash = $scope.diagarray[0];
+                if(!hash.ispatient){
+                    alert("patient not be selected!");
+                    return;
+                }
+                $.ajax({
+                    url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + hash.guid,
+                    success: function (data) {
+                        $scope.checkguid = hash.guid;
+                        $scope.$apply();
+                        $("#checkstatus").modal("show");
+                    },
+                    error: function () {
+                        var str = '';
+                        for (var i in err){
+                            if ( typeof err[i] != "funciton"){
+                                str = i + ':' + err[i] + '\n';
+                            }
+                            alert('fatal error');
+                        }
+                    }
+                });
+            }else if($scope.count > 1){
+               //多样本
+                var oldguids = [];
+                var patients = [];
+                var normal = [];
+                var selectcount = 0;
+                $scope.diagarray.forEach(function (d) {
+                    if (d.selected) {
+                        selectcount += 1;
+                        oldguids.push(d.guid);
+                        if (d.ispatient) {
+                            if (d.tag == undefined || d.tag == '') {
+                                alert("please specific tag in VCF file");
+                                return;
+                            } else {
+                                patients.push(d.tag);
+                            }
+                        } else {
+                            normal.push(d.tag);
+                        }
+                    }
+                });
+                if(selectcount == 0){
+                    alert("please select at least one sample");
+                    return;
+                }
+                var newguid = genguid();
+                //cgi para
+                var para = "?user=guest&guids" + oldguids.join("+") + "&newguid=" + newguid;
+                $.ajax({
+                    url: 'http://202.121.178.141/cgi-bin/MDPA/Merge.cgi' + para,
+                    success: function () {
+                        $.ajax({
+                            url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + newguid,
+                            success: function () {
+                                $scope.checkguid = newguid;
+                                $scope.$apply();
+                                $("#checkstatus").modal("show");
+                            },
+                            error: function () {
+                                var str = '';
+                                for (var i in err){
+                                    if ( typeof err[i] != "funciton"){
+                                        str = i + ':' + err[i] + '\n';
+                                    }
+                                    alert('fatal error');
+                                }
+                            }
+                        });
+                    },
+                    error: function () {
+                        alert("fatal error");
+                    }
+                });
+            }
         }
     });
 </script>
@@ -337,6 +445,26 @@
         </div>
     </div><!-- /.modal -->
 </div>
+<div class="modal fade" id="checkstatus" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="checkdialog" hidden>
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                    &times;
+                </button>
+                <h4 class="modal-title">
+                    <% if (lan == 'eng') { %>Check status<% } else { %>查询结果<% } %>
+                </h4>
+            </div>
+            <div class="modal-body">
+                <label class="col-md-12">
+                    <input ng-model="checkguid">
+                </label>
+                <button class="btn btn-primary" ng-click="getCaseResult()"><% if (lan == 'eng') {%>Check<%} else{%>查询<%}%></button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="row">
     <script src="<%=static_dir%>/js/caseUploader/lib/xlsx.core.min.js"></script>
     <script src="<%=static_dir%>/js/caseUploader/lib/pako.min.js"></script>
@@ -358,13 +486,26 @@
                 $('#contentNewGene').hide();
             });
 
+            $("#checkstatus").on("shown.bs.modal", function () {
+                if(ifNew){
+                    $("#checkdialog").show();
+                }else{
+                    ifNew = true;
+                }
+            }).on("hide.bs.modal", function () {
+                $("#checkdialog").hide();
+            });
+
 
         })
 
         //打开新建基因窗体
         function newGene(){
             $('#myModal').modal('show');
-            guid = genguid();
+        }
+
+        function checkStatus() {
+            $("#checkstatus").modal("show");
         }
 
     </script>
@@ -473,8 +614,8 @@
             </td>
             <td>{{ file.Guid }}</td>
             <td>{{ file.Patient }}</td>
-            <td><input placeholder="TAG in VCF" ></td>
-            <td><input type="checkbox" </td>
+            <td><input placeholder="TAG in VCF" ng-model="file.tag"></td>
+            <td><input type="checkbox" ng-model="file.ispatient"></td>
             <td><input type="checkbox" ng-model="file.valid"></td>
         </tr>
         </tbody>
@@ -497,13 +638,7 @@
         <a href="<%=static_dir%>/caseTemplates/chrom.csv" download="chrom.csv">csv</a>、
         vcf格式）。
         <br/>
-        请注意，选择文件后需先点击“上传”按钮进行上传，再点击“诊断”按钮。
-        持有guid的用户，请在此输入并查看结果：
-        <input type="text" ng-model="inputGuid" ng-init="">
-        <button class="btn btn-primary" ng-click="getCaseResult()">查看</button>
-    </div>
-    <div class="row">
-        <hr>
+        <button class="btn btn-primary" onclick="checkStatus()">查询结果</button>
         <button ng-click="diag()" class="btn btn-default pull-right">诊断</button>
         <button onclick="upload()" class="btn btn-default pull-right">测试</button>
     </div>
