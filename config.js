@@ -1,4 +1,4 @@
 var config = {
-    host: 'http://www.diseasegps.org'
+    host: '127.0.0.1'
 };
 module.exports = config;
