@@ -3,6 +3,14 @@
 
 <script>
     var app = angular.module('myApp', []);
+    var guid;
+    function genguid(){
+        var guid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+            return v.toString(16);
+        });
+        return guid;
+    }
     app.controller('myCtrl', function($scope) {
 
         /*
@@ -10,9 +18,9 @@
          -------------------------------------------------
          */
         $scope.getCaseResult = function () {
-            if ($scope.inputGuid == undefined || $scope.inputGuid == '') return;
+            if ($scope.checkguid == undefined || $scope.checkguid == '') return;
             $.ajax({
-                url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=check&user=guest&uid='+$scope.inputGuid,
+                url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=check&user=guest&uid='+$scope.checkguid,
                 success: function (data){
                     var parsed = $.parseJSON(data);
                     if (parsed.percentage != undefined){
@@ -93,56 +101,6 @@
             }
         }
 
-        //检查文件名称是否存在，然后切换至次级窗体
-        $scope.openForm = function(){
-            if ($scope.fileName == ''){
-                return alert('请输入文件名！');
-            }
-            for (var i = 0;i < $scope.files.length;i++){
-                if ($scope.files[i].name == $scope.fileName){
-                    return alert('文件名已存在，请重新输入！');
-                }
-            }
-            $('#contentNewFile').hide();
-            switch ($scope.type){
-                case 'gene':
-                    $scope.genes = [];
-                    $('#contentNewGene').show();
-                    break;
-                case 'chromosome':
-                    $scope.chroms = [];
-                    $('#contentNewChromosome').show();
-            }
-        };
-
-        //新增染色体异常项，加入表格
-        $scope.addChromosome = function(){
-            if ($scope.chromosome == '' || $scope.chromosomeArm == ''
-                || $scope.location == '' || $scope.variationType == ''){
-                return alert('请输入完整的染色体信息！');
-            }
-            $scope.chroms.push({
-                Chrom: $scope.chromosome,
-                Arm: $scope.chromosomeArm,
-                Pos: $scope.location,
-                Type: $scope.variationType
-            });
-        };
-
-        //新增基因异常项，加入表格
-        $scope.addGene = function(){
-            if ($scope.gene == ''){
-                return alert('请输入基因名！');
-            }
-            var genes = $scope.gene.split(';');
-            for (var i = 0;i < genes.length;i++){
-                if (genes[i].trim() != '')
-                $scope.genes.push({
-                    Name: genes[i].trim()
-                });
-            }
-            $scope.gene = '';
-        };
 
         //删除一条染色体记录
         $scope.deleteChrom = function(chrom){
@@ -154,6 +112,21 @@
             $scope.genes.splice($scope.genes.indexOf(gene), 1);
         };
 
+        //完成条目创建
+        $scope.save = function () {
+            if ($scope.entryid == ''){
+                return alert('请输入病患编号！');
+            }
+            $scope.files.push({
+                Entryid: $scope.entryid,
+                Guid: $scope.Guid,
+                Patient: $scope.patient,
+                tag: '',
+                ispatient: false,
+                valid: false
+            })
+            $('#myModal').modal('hide');
+        }
         //完成一个染色体变异文件的创建或修改
         $scope.saveChromosome = function(){
             if ($scope.chroms.length == 0){
@@ -201,7 +174,9 @@
                 type: $scope.type,
                 patient: $scope.patient,
                 genes: $scope.genes,
-                valid: true
+                tag: '',
+                ispatient: false,
+                valid: false
             });
             $scope.genes = [];
             $scope.fileName = '';
@@ -252,41 +227,150 @@
         }
 
         //初始化caseUploader插件
-        var guid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-            return v.toString(16);
-        });//用于标识本次基因诊断会话的id
-        $('#caseUpload').caseUploader({
-            caseInput: 'file',//file是本页一个input标签的id
-            url: 'http://202.121.178.141/cgi-bin/MDPA/VCFupload.cgi',
-            additionalData: JSON.stringify({
-                guid: guid
-                <%-userName && userName != '' ? ',user: '+userName : ''%>
-            }),
-            callback: function(data, err) {
-                if (err && err != ''){
-                    alert(err);
+        //用于标识本次基因诊断会话的id
+        /*$scope.caseUploader = function () {
+            $.ajax({
+                url: 'http://202.121.178.141/cgi-bin/MDPA/VCFupload.cgi',
+                additionalData: JSON.stringify({
+                    guid: guid
+                }),
+                async: false,
+                type: 'POST',
+                success: function(){
+                    $scope.files.Guid = guid;
+                },
+                error: function(){
+                    $scope.diagnoseInfo = 'error';
                 }
-                else {
-                    $.ajax({
-                        url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid='+guid,
-                        success: function(){
-                            alert('上传成功！请记录guid：'+ guid + '\n稍后在本页查看结果。');
-                            $scope.inputGuid = guid;
-                            $scope.$apply();
-                        },
-                        error: function(err) {
-                            var str = '';
-                            for (var i in err){
-                                if (typeof err[i] != "function")
-                                    str += i + ': ' + err[i] + '\n';
-                            }
-                            alert('上传失败，未知错误\n'+str);
-                        }
-                    })
+            });
+        }*/
+        $scope.getguid = function () {
+            $scope.Guid = genguid();
+            $('#caseUpload').caseUploader({
+                caseInput: 'file',//file是本页一个input标签的id
+                url: 'http://202.121.178.141/cgi-bin/MDPA/VCFupload.cgi',
+                additionalData: JSON.stringify({
+                    guid: $scope.Guid,
+                    <%-userName && userName != '' ? 'user: '+userName : ''%>
+                }),
+                callback: function(data, err) {
+                    if (err && err != ''){
+                        alert(err);
+                    }
+                }
+            });
+            $scope.$apply();
+        }
+
+        //诊断函数
+        $scope.diag = function () {
+            var table = document.getElementById("grouptable");
+            var row = table.rows.length;
+            var col = table.rows[0].cells.length;
+            $scope.diagarray = [];
+            $scope.count = 0;
+            if (row > 1){
+                for (var i = 1; i < row; i++){
+                    var tdguid = $("#grouptable tr:eq(" + i + ") td:eq(1)").html();
+                    var tdtag  = $("#grouptable tr:eq(" + i + ") td:eq(3)").html();
+                    var tdpatient = $("#grouptable tr:eq(" + i + ") td:eq(4)").html();
+                    var tdselect = $("#grouptable tr:eq(" + i + ") td:eq(5)").html();
+                    tdtag = $(tdtag).get(0);
+                    tdselect = $(tdselect).get(0);
+                    tdpatient = $(tdpatient).get(0);
+                    if($scope.files[i-1].valid){
+                        $scope.count += 1;
+                        $scope.diagarray.push({
+                            guid: tdguid,
+                            ispatient: $scope.files[i-1].ispatient,
+                            tag: $scope.files[i-1].tag,
+                            selected: $scope.files[i-1].valid
+                        })
+                    }
                 }
             }
-        });
+            //样本处理
+
+            if ($scope.count == 1){
+                //单一样本
+                var hash = $scope.diagarray[0];
+                if(!hash.ispatient){
+                    alert("patient not be selected!");
+                    return;
+                }
+                $.ajax({
+                    url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + hash.guid,
+                    success: function (data) {
+                        $scope.checkguid = hash.guid;
+                        $scope.$apply();
+                        $("#checkstatus").modal("show");
+                    },
+                    error: function () {
+                        var str = '';
+                        for (var i in err){
+                            if ( typeof err[i] != "funciton"){
+                                str = i + ':' + err[i] + '\n';
+                            }
+                            alert('fatal error');
+                        }
+                    }
+                });
+            }else if($scope.count > 1){
+               //多样本
+                var oldguids = [];
+                var patients = [];
+                var normal = [];
+                var selectcount = 0;
+                $scope.diagarray.forEach(function (d) {
+                    if (d.selected) {
+                        selectcount += 1;
+                        oldguids.push(d.guid);
+                        if (d.ispatient) {
+                            if (d.tag == undefined || d.tag == '') {
+                                alert("please specific tag in VCF file");
+                                return;
+                            } else {
+                                patients.push(d.tag);
+                            }
+                        } else {
+                            normal.push(d.tag);
+                        }
+                    }
+                });
+                if(selectcount == 0){
+                    alert("please select at least one sample");
+                    return;
+                }
+                var newguid = genguid();
+                //cgi para
+                var para = "?user=guest&guids" + oldguids.join("+") + "&newguid=" + newguid;
+                $.ajax({
+                    url: 'http://202.121.178.141/cgi-bin/MDPA/Merge.cgi' + para,
+                    success: function () {
+                        $.ajax({
+                            url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + newguid,
+                            success: function () {
+                                $scope.checkguid = newguid;
+                                $scope.$apply();
+                                $("#checkstatus").modal("show");
+                            },
+                            error: function () {
+                                var str = '';
+                                for (var i in err){
+                                    if ( typeof err[i] != "funciton"){
+                                        str = i + ':' + err[i] + '\n';
+                                    }
+                                    alert('fatal error');
+                                }
+                            }
+                        });
+                    },
+                    error: function () {
+                        alert("fatal error");
+                    }
+                });
+            }
+        }
     });
 </script>
 
@@ -300,15 +384,12 @@
                     &times;
                 </button>
                 <h4 class="modal-title">
-                    <% if (lan == 'eng') { %>New file<% } else { %>新增文件<% } %>
+                    <% if (lan == 'eng') { %>New file<% } else { %>新增条目<% } %>
                 </h4>
             </div>
             <div class="modal-body">
-                <label class="col-md-6"><% if (lan == 'eng') { %>File type: <% } else { %>文件类型：<% } %>
-                    <select ng-model="type" ng-init="type='gene'">
-                        <option value="gene"><% if (lan == 'eng') { %>Genovariation<% } else { %>基因变异<% } %></option>
-                        <option value="chromosome"><% if (lan == 'eng') { %>Chromosome variation<% } else { %>染色体变异<% } %></option>
-                    </select>
+                <label class="col-md-6"><% if (lan == 'eng') { %>Sample ID: <% } else { %>样本编号：<% } %>
+                    <input ng-model="entryid" ng-init="entryid=''">
                 </label>
                 <label class="col-md-6"><% if (lan == 'eng') { %>Patient: <% } else { %>病患：<% } %>
                     <select ng-model="patient" ng-init="patient='self'">
@@ -319,72 +400,13 @@
                         <option value="grandmother"><% if (lan == 'eng') { %>Grandmother<% } else { %>祖母<% } %></option>
                     </select>
                 </label>
-                <label class="col-md-12"><% if (lan == 'eng') { %>File name: <% } else { %>文件名：<% } %>
-                    <input ng-model="fileName" ng-init="fileName=''">
+                <label class="col-md-12"><% if (lan == 'eng') { %>File name: <% } else { %>文件：<% } %>
+                    <input type="file" multiple="multiple" name="file" id="file" ng-click="getguid()">
+                    <div id="caseUpload"></div>
                 </label>
-                <button ng-click="openForm()"><% if (lan == 'eng') { %>Next<% } else { %>下一步<% } %></button>
+                <button ng-click="save()"><% if (lan == 'eng') { %>OK<% } else { %>确定<% } %></button>
             </div>
         </div><!-- contentNewFile -->
-        <div class="modal-content" id="contentNewChromosome" hidden>
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
-                    &times;
-                </button>
-                <h4 class="modal-title">
-                    <% if (lan == 'eng') { %>New chromosome variation<% } else { %>新增染色体变异<% } %>
-                </h4>
-            </div>
-            <div class="modal-body">
-                <label><% if (lan == 'eng') { %>Chromosome<% } else { %>染色体<% } %>
-                    <select ng-model="chromosome" ng-init="chromosome='1'">
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="X">X</option>
-                        <option value="Y">Y</option>
-                    </select>
-                </label>
-                <label><% if (lan == 'eng') { %>chromosome arm<% } else { %>染色体臂<% } %>
-                    <select ng-model="chromosomeArm" ng-init="chromosomeArm='p'">
-                        <option value="p">p</option>
-                        <option value="q">q</option>
-                    </select>
-                </label>
-                <label><% if (lan == 'eng') { %>Location<% } else { %>位置<% } %>
-                    <input ng-model="location" ng-init="location=''">
-                </label>
-                <label><% if (lan == 'eng') { %>Type<% } else { %>类型<% } %>
-                    <select ng-model="variationType" ng-init="variationType='gain'">
-                        <option value="gain"><% if (lan == 'eng') { %>insertion<% } else { %>插入<% } %></option>
-                        <option value="loss"><% if (lan == 'eng') { %>deletion<% } else { %>缺失<% } %></option>
-                    </select>
-                </label>
-                <button ng-click="addChromosome()"><% if (lan == 'eng') { %>Add<% } else { %>添加<% } %></button>
-                <table ng-if="chroms.length>0" class="table table-bordered table-striped dataTable" role="grid">
-                    <thead>
-                    <tr role="row">
-                        <th class="col-md-4" title="<% if (lan == 'eng') { %>Chromosome Location<% } else { %>染色体位置<% } %>">
-                            <% if (lan == 'eng') { %>Location<% } else { %>位置<% } %>
-                        </th>
-                        <th class="col-md-3" title="<% if (lan == 'eng') { %>Type<% } else { %>类型<% } %>">
-                            <% if (lan == 'eng') { %>Type<% } else { %>类型<% } %>
-                        </th>
-                        <th class="col-md-5" title="<% if (lan == 'eng') { %>Do something to this entry<% } else { %>对该条目进行操作<% } %>">
-                            <% if (lan == 'eng') { %>Operation<% } else { %>操作<% } %>
-                        </th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr role="row" class="color-palette" ng-repeat="chrom in chroms">
-                        <td>{{ chrom.Chrom + chrom.Arm + chrom.Pos }}</td>
-                        <td>{{ <%-lan=='eng'?'chrom.Type':'chrom.Type=="gain"?"插入":"缺失"'%> }}</td>
-                        <td><a href="javascript:void(0)" ng-click="deleteChrom(chrom)"><%-lan=='eng'?'delete':'删除'%></a></td>
-                    </tr>
-                    </tbody>
-                </table>
-
-                <button ng-click="saveChromosome()"><% if (lan == 'eng') { %>OK<% } else { %>确定<% } %></button>
-            </div>
-        </div>
         <div class="modal-content" id="contentNewGene" hidden>
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
@@ -423,33 +445,24 @@
         </div>
     </div><!-- /.modal -->
 </div>
-<div class="row">
-    <div class="col-md-4">
-        <label>
-            性别
-            <select ng-model="gender" ng-init="gender='male'">
-                <option value="male">男</option>
-                <option value="female">女</option>
-            </select>
-        </label>
-    </div>
-    <div class="col-md-4">
-        <label>
-            年龄
-            <input ng-model="age" ng-init="age=''">
-        </label>
-    </div>
-    <div class="col-md-4">
-        <label>遗传方式
-            <select ng-model="inheritance" ng-init="inheritance='unknown'">
-                <option value="unknown">未知</option>
-                <option value="recessive">常染色体隐性</option>
-                <option value="dominant">常染色体显性</option>
-                <option value="XRecessive">X连锁隐性</option>
-                <option value="XDominant">X连锁显性</option>
-                <option value="YChain">Y染色体连锁</option>
-            </select>
-        </label>
+<div class="modal fade" id="checkstatus" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="checkdialog" hidden>
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                    &times;
+                </button>
+                <h4 class="modal-title">
+                    <% if (lan == 'eng') { %>Check status<% } else { %>查询结果<% } %>
+                </h4>
+            </div>
+            <div class="modal-body">
+                <label class="col-md-12">
+                    <input ng-model="checkguid">
+                </label>
+                <button class="btn btn-primary" ng-click="getCaseResult()"><% if (lan == 'eng') {%>Check<%} else{%>查询<%}%></button>
+            </div>
+        </div>
     </div>
 </div>
 <div class="row">
@@ -473,12 +486,26 @@
                 $('#contentNewGene').hide();
             });
 
+            $("#checkstatus").on("shown.bs.modal", function () {
+                if(ifNew){
+                    $("#checkdialog").show();
+                }else{
+                    ifNew = true;
+                }
+            }).on("hide.bs.modal", function () {
+                $("#checkdialog").hide();
+            });
+
 
         })
 
         //打开新建基因窗体
         function newGene(){
             $('#myModal').modal('show');
+        }
+
+        function checkStatus() {
+            $("#checkstatus").modal("show");
         }
 
     </script>
@@ -557,19 +584,25 @@
             }
         </script>
     </div>
-    <table class="table table-bordered table-striped dataTable" role="grid" ng-if="files.length > 0">
+    <table class="table table-bordered table-striped dataTable" role="grid" ng-if="files.length" id="grouptable">
         <thead>
         <tr role="row">
-            <th class="col-md-4" title="<% if (lan == 'eng') { %>Name of the file<% } else { %>文件名<% } %>">
-                <% if (lan == 'eng') { %>File Name<% } else { %>文件名<% } %>
+            <th class="col-md-2" title="<% if (lan == 'eng') { %>Sample ID<% } else { %>样本编号<% } %>">
+                <% if (lan == 'eng') { %>Sample ID<% } else { %>样本编号<% } %>
             </th>
-            <th class="col-md-3" title="<% if (lan == 'eng') { %>Type<% } else { %>类型<% } %>">
-                <% if (lan == 'eng') { %>Type<% } else { %>类型<% } %>
+            <th class="col-md-2" title="<% if (lan == 'eng') { %>GUID<% } else { %>GUID<% } %>">
+                <% if (lan == 'eng') { %>GUID<% } else { %>GUID<% } %>
             </th>
-            <th class="col-md-3">
+            <th class="col-md-2">
                 <%-lan == 'eng' ? 'Patient' : '病患'%>
             </th>
-            <th class="col-md-2" title="<% if (lan == 'eng') { %>Whether this entry is valid as a datum for diagnosing.<% } else { %>该条目是否用作诊断数据<% } %>">
+            <th class="col-md-2">
+                <% if (lan == 'eng') {%>TAG<%} else {%>标签<%} %>
+            </th>
+            <th class="col-md-2">
+                <% if(lan == 'eng') {%>Patient<%} else {%>病患<%} %>
+            </th>
+            <th class="col-md-1" title="<% if (lan == 'eng') { %>Whether this entry is valid as a datum for diagnosing.<% } else { %>该条目是否用作诊断数据<% } %>">
                 <% if (lan == 'eng') { %>valid<% } else { %>用于诊断<% } %>
             </th>
         </tr>
@@ -577,10 +610,12 @@
         <tbody>
         <tr role="row" class="color-palette" ng-repeat="file in files">
             <td>
-                <a href="javascript: void(0);" ng-click="viewFile(file)">{{ file.name }}</a>
+                {{ file.Entryid }}
             </td>
-            <td>{{ <%-lan=='eng'?'file.type':'file.type=="gene"?"基因变异":"染色体变异"'%> }}</td>
-            <td>{{ file.patient }}</td>
+            <td>{{ file.Guid }}</td>
+            <td>{{ file.Patient }}</td>
+            <td><input placeholder="TAG in VCF" ng-model="file.tag"></td>
+            <td><input type="checkbox" ng-model="file.ispatient"></td>
             <td><input type="checkbox" ng-model="file.valid"></td>
         </tr>
         </tbody>
@@ -603,16 +638,8 @@
         <a href="<%=static_dir%>/caseTemplates/chrom.csv" download="chrom.csv">csv</a>、
         vcf格式）。
         <br/>
-        请注意，选择文件后需先点击“上传”按钮进行上传，再点击“诊断”按钮。
-        <input type="file" multiple="multiple" name="file" id="file">
-        <div id="caseUpload"></div>
-        持有guid的用户，请在此输入并查看结果：
-        <input type="text" ng-model="inputGuid" ng-init="">
-        <button class="btn btn-primary" ng-click="getCaseResult()">查看</button>
-    </div>
-    <div class="row">
-        <hr>
-        <button ng-click="upload()" class="btn btn-default pull-right">诊断</button>
+        <button class="btn btn-primary" onclick="checkStatus()">查询结果</button>
+        <button ng-click="diag()" class="btn btn-default pull-right">诊断</button>
         <button onclick="upload()" class="btn btn-default pull-right">测试</button>
     </div>
     <div class="row" ng-if="diagnoseInfo!=''">
