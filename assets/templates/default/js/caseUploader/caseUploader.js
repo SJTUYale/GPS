@@ -28,9 +28,9 @@
         htmlStr += '<div class="cu-progress col-md-6"><span class="cu-progress-val" id="cu-progress-val">0%</span>' +
             '<span class="cu-progress-bar"><span class="cu-progress-in" id="cu-progress-bar" style="width: 0"></span></span></div>';
         if (options.uploadButton) {
-            htmlStr += '<button id="cu-upload-button">上传</button>';
+            htmlStr += '<button id="cu-upload-button">Upload</button>';
         }
-        htmlStr += '<button id="cu-pause-button">暂停</button><br>';
+        htmlStr += '<button id="cu-pause-button">Pause</button><br>';
 
         htmlStr += '<div class="cu-info-div col-md-12">';
         htmlStr += '<div id="cu-fileName-div"></div>';
@@ -92,26 +92,26 @@
     //更新视图
     $.fn.caseUploader.updateView = function(){
         var status = $.fn.caseUploader.status;
-        status.$pauseButton.html(status.pausing ? '继续' : '暂停');
+        status.$pauseButton.html(status.pausing ? 'Continue' : 'Pause');
         if (status.uploading && status.files.length > 0){
             var file = status.files[status.fileIndex];
-            status.$fileNameDiv.html('文件名：'+file.name);
-            status.$fileSizeDiv.html('文件大小：'+(file.size/1024/1024).toFixed(2)+' MB');
-            status.$fileLeftDiv.html('剩余大小：'+((file.size-status.chunkPos)/1024/1024).toFixed(2)+' MB');
+            status.$fileNameDiv.html('Filename：'+file.name);
+            status.$fileSizeDiv.html('File size：'+(file.size/1024/1024).toFixed(2)+' MB');
+            status.$fileLeftDiv.html('Rest：'+((file.size-status.chunkPos)/1024/1024).toFixed(2)+' MB');
             var newTime = (new Date()).getTime();
             var speed = status.lastSize * 1000 / (newTime - status.lastTime);
             status.lastTime = newTime;
-            status.$speedDiv.html('传输速度：'+(speed/1024).toFixed(2)+' KB/s');
-            status.$statusDiv.html('状态：'+(status.pausing?'暂停':'传输中'));
+            status.$speedDiv.html('Speed：'+(speed/1024).toFixed(2)+' KB/s');
+            status.$statusDiv.html('Status：'+(status.pausing?'Pause':'transferring'));
             var percentage = '' + (status.chunkPos / file.size * 100).toFixed(0) + '%';
             status.$progressText.html(percentage);
             status.$progressBar.css('width', percentage);
         } else {
-            status.$fileNameDiv.html('文件名：');
-            status.$fileSizeDiv.html('文件大小：0');
-            status.$fileLeftDiv.html('剩余大小：0');
-            status.$speedDiv.html('传输速度：0');
-            status.$statusDiv.html('状态：结束');
+            //status.$fileNameDiv.html('Filename：');
+            //status.$fileSizeDiv.html('File size：0');
+            //status.$fileLeftDiv.html('Rest：0');
+            //status.$speedDiv.html('Speed：0');
+            status.$statusDiv.html('Status：End');
             status.$progressText.html('100%');
             status.$progressBar.css('width', '100%');
         }
@@ -322,6 +322,7 @@
                         fData.metaData = JSON.stringify(metaData);
                         fData.metaDataFile = result.substr(0, chunkSizeCount);
                         fData.finish = 'false';
+                        options.callback(metaData);
                         //剩下的数据丢弃，等待下次传输
                         status.chunkPos = chunkSizeCount;
                         status.lastSize = chunkSizeCount;

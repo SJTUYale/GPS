@@ -24,15 +24,15 @@
                 success: function (data){
                     var parsed = $.parseJSON(data);
                     if (parsed.percentage != undefined){
-                        alert('文件分析正在进行中（'+parsed.percentage+'），请耐心等待');
+                        alert('During analysis（'+parsed.percentage+'），Please Wait');
                     }
                     else {
                         window.open(parsed.url);
-                        alert('分析完成！请在弹出页面中查看结果。');
+                        alert('Analysis completed！view result in the new window。');
                     }
                 },
                 error: function () {
-                    alert('网络连接异常，请稍后再试');
+                    alert('Network abnormal，Please try later');
                 }
             })
         }
@@ -114,17 +114,6 @@
 
         //完成条目创建
         $scope.save = function () {
-            if ($scope.entryid == ''){
-                return alert('请输入病患编号！');
-            }
-            $scope.files.push({
-                Entryid: $scope.entryid,
-                Guid: $scope.Guid,
-                Patient: $scope.patient,
-                tag: '',
-                ispatient: false,
-                valid: false
-            })
             $('#myModal').modal('hide');
         }
         //完成一个染色体变异文件的创建或修改
@@ -245,6 +234,9 @@
             });
         }*/
         $scope.getguid = function () {
+            if ($scope.entryid == ''){
+                return alert('please specific entry ID！');
+            }
             $scope.Guid = genguid();
             $('#caseUpload').caseUploader({
                 caseInput: 'file',//file是本页一个input标签的id
@@ -254,6 +246,31 @@
                     <%-userName && userName != '' ? 'user: '+userName : ''%>
                 }),
                 callback: function(data, err) {
+                    if (data && data !=  'finish'){
+                        var fields = data['dataFields'].split('\t');
+                        if (fields.length == 10){
+                            //单样本
+                            $scope.files.push({
+                                Entryid: $scope.entryid,
+                                Guid: $scope.Guid,
+                                tag: fields[9],
+                                ispatient: true,
+                                valid: true
+                            });
+                        }else if (fields.length > 10){
+                            for (var i = 9; i < fields.length;i++) {
+                                $scope.files.push({
+                                    Entryid: $scope.entryid,
+                                    Guid: $scope.Guid,
+                                    tag: fields[i],
+                                    ispatient: false,
+                                    valid: true
+                                });
+                            }
+                        } else{
+                            return alert('VCF file has columns less than 10!');
+                        }
+                    }
                     if (err && err != ''){
                         alert(err);
                     }
@@ -271,6 +288,7 @@
             $scope.count = 0;
             if (row > 1){
                 for (var i = 1; i < row; i++){
+                    var tdid = $("#grouptable tr:eq(" + i + ") td:eq(0)").html();
                     var tdguid = $("#grouptable tr:eq(" + i + ") td:eq(1)").html();
                     var tdtag  = $("#grouptable tr:eq(" + i + ") td:eq(3)").html();
                     var tdpatient = $("#grouptable tr:eq(" + i + ") td:eq(4)").html();
@@ -281,6 +299,7 @@
                     if($scope.files[i-1].valid){
                         $scope.count += 1;
                         $scope.diagarray.push({
+                            Entryid: tdid,
                             guid: tdguid,
                             ispatient: $scope.files[i-1].ispatient,
                             tag: $scope.files[i-1].tag,
@@ -320,6 +339,7 @@
                 var oldguids = [];
                 var patients = [];
                 var normal = [];
+                var samples = [];
                 var selectcount = 0;
                 $scope.diagarray.forEach(function (d) {
                     if (d.selected) {
@@ -335,40 +355,70 @@
                         } else {
                             normal.push(d.tag);
                         }
+                        samples.push(d.Entryid);
                     }
                 });
+                oldguids = $.uniqueSort(oldguids);
+
                 if(selectcount == 0){
                     alert("please select at least one sample");
                     return;
-                }
-                var newguid = genguid();
-                //cgi para
-                var para = "?user=guest&guids" + oldguids.join("+") + "&newguid=" + newguid;
-                $.ajax({
-                    url: 'http://202.121.178.141/cgi-bin/MDPA/Merge.cgi' + para,
-                    success: function () {
-                        $.ajax({
-                            url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + newguid,
-                            success: function () {
-                                $scope.checkguid = newguid;
-                                $scope.$apply();
-                                $("#checkstatus").modal("show");
-                            },
-                            error: function () {
-                                var str = '';
-                                for (var i in err){
-                                    if ( typeof err[i] != "funciton"){
-                                        str = i + ':' + err[i] + '\n';
-                                    }
-                                    alert('fatal error');
+                }else if(oldguids.length == 1){
+                    $.ajax({
+                        url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + oldguids[0] + '&patient=' + patients.join('+') + '&normal=' + normal.join('+'),
+                        success: function () {
+                            $scope.checkguid = oldguids[0];
+                            $scope.$apply();
+                            $("#checkstatus").modal("show");
+                        },
+                        error: function () {
+                            var str = '';
+                            for (var i in err){
+                                if ( typeof err[i] != "funciton"){
+                                    str = i + ':' + err[i] + '\n';
                                 }
+                                alert('fatal error');
                             }
-                        });
-                    },
-                    error: function () {
-                        alert("fatal error");
-                    }
-                });
+                        }
+                    });
+                }else {
+                    var newguid = genguid();
+                    //cgi para
+                    var para = "?user=guest&guids=" + oldguids.join("+") + "&newguid=" + newguid;
+                    alert(samples.join(','));
+                    $.ajax({
+                        url: 'http://202.121.178.141/cgi-bin/MDPA/Merge.cgi' + para,
+                        success: function () {
+                            $scope.files.push({
+                                Entryid: 'Merge of ' + samples.join(','),
+                                Guid: newguid,
+                                tag: 'merge',
+                                ispatient: false,
+                                valid: true
+                            });
+                            $.ajax({
+                                url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + newguid + '&patient=' + patients.join('+') + '&normal=' + normal.join('+'),
+                                success: function () {
+                                    $scope.checkguid = newguid;
+                                    $scope.$apply();
+                                    $("#checkstatus").modal("show");
+                                },
+                                error: function () {
+                                    var str = '';
+                                    for (var i in err) {
+                                        if (typeof err[i] != "funciton") {
+                                            str = i + ':' + err[i] + '\n';
+                                        }
+                                        alert('fatal error');
+                                    }
+                                }
+                            });
+                        },
+                        error: function () {
+                            alert("fatal error");
+                        }
+                    });
+                }
             }
         }
     });
@@ -388,9 +438,10 @@
                 </h4>
             </div>
             <div class="modal-body">
-                <label class="col-md-6"><% if (lan == 'eng') { %>Sample ID: <% } else { %>样本编号：<% } %>
+                <label class="col-md-12"><% if (lan == 'eng') { %>Sample ID: <% } else { %>样本编号：<% } %>
                     <input ng-model="entryid" ng-init="entryid=''">
                 </label>
+                <!--
                 <label class="col-md-6"><% if (lan == 'eng') { %>Patient: <% } else { %>病患：<% } %>
                     <select ng-model="patient" ng-init="patient='self'">
                         <option value="self"><% if (lan == 'eng') { %>Self<% } else { %>本人<% } %></option>
@@ -400,10 +451,11 @@
                         <option value="grandmother"><% if (lan == 'eng') { %>Grandmother<% } else { %>祖母<% } %></option>
                     </select>
                 </label>
-                <label class="col-md-12"><% if (lan == 'eng') { %>File name: <% } else { %>文件：<% } %>
+                -->
+                <!--<label class="col-md-12"><% if (lan == 'eng') { %>File name: <% } else { %>文件：<% } %> -->
                     <input type="file" multiple="multiple" name="file" id="file" ng-click="getguid()">
                     <div id="caseUpload"></div>
-                </label>
+                <!--</label>-->
                 <button ng-click="save()"><% if (lan == 'eng') { %>OK<% } else { %>确定<% } %></button>
             </div>
         </div><!-- contentNewFile -->
@@ -510,8 +562,8 @@
 
     </script>
     <div class="row">
-        <p>基因或染色体变异文件：</p>
-        <button onclick="newGene()" class="btn btn-info">新建</button>
+        <p><% if (lan == 'eng'){%>VCF file:<%} else {%>基因或染色体变异文件：<%}%></p>
+        <button onclick="newGene()" class="btn btn-info"><% if (lan == 'eng'){%>New<%} else {%>新建<%}%></button>
         <script>
             //测试用
             function upload(){
@@ -594,16 +646,13 @@
                 <% if (lan == 'eng') { %>GUID<% } else { %>GUID<% } %>
             </th>
             <th class="col-md-2">
-                <%-lan == 'eng' ? 'Patient' : '病患'%>
-            </th>
-            <th class="col-md-2">
                 <% if (lan == 'eng') {%>TAG<%} else {%>标签<%} %>
             </th>
             <th class="col-md-2">
                 <% if(lan == 'eng') {%>Patient<%} else {%>病患<%} %>
             </th>
             <th class="col-md-1" title="<% if (lan == 'eng') { %>Whether this entry is valid as a datum for diagnosing.<% } else { %>该条目是否用作诊断数据<% } %>">
-                <% if (lan == 'eng') { %>valid<% } else { %>用于诊断<% } %>
+                <% if (lan == 'eng') { %>in use<% } else { %>用于诊断<% } %>
             </th>
         </tr>
         </thead>
@@ -613,14 +662,22 @@
                 {{ file.Entryid }}
             </td>
             <td>{{ file.Guid }}</td>
-            <td>{{ file.Patient }}</td>
-            <td><input placeholder="TAG in VCF" ng-model="file.tag"></td>
+            <td>{{file.tag}}</td>
             <td><input type="checkbox" ng-model="file.ispatient"></td>
             <td><input type="checkbox" ng-model="file.valid"></td>
         </tr>
         </tbody>
     </table>
     <div class="row">
+        <hr>
+        <% if (lan == 'eng') {%>Examples can be download here:<%}else{%>实例文件<%} %>
+        <br/>
+        <a href="http://202.121.178.141/MDPA/GPS_data/examples/example.vcf" download="example.vcf">True positive set</a><br/>
+        <a href="http://202.121.178.141/MDPA/GPS_data/examples/Family.pass.vcf" download="Family.pass.vcf">Merged VCF of Family1</a><br/>
+        <a href="http://202.121.178.141/MDPA/GPS_data/examples/SRR1584524.pass.vcf" downlaod="Mother.vcf">Single VCF of mother</a><br/>
+        <a href="http://202.121.178.141/MDPA/GPS_data/examples/SRR1584526.pass.vcf" download="Father.vcf">Single VCF of father</a><br/>
+        <a href="http://202.121.178.141/MDPA/GPS_data/examples/SRR1584525.pass.vcf" download="Child.vcf">Single VCF of child</a><br/>
+        <!--
         <hr>
         如数据量较大，请使用文件上传功能。支持以下类型（点击链接下载模版）：
         <br/>
@@ -638,9 +695,11 @@
         <a href="<%=static_dir%>/caseTemplates/chrom.csv" download="chrom.csv">csv</a>、
         vcf格式）。
         <br/>
-        <button class="btn btn-primary" onclick="checkStatus()">查询结果</button>
-        <button ng-click="diag()" class="btn btn-default pull-right">诊断</button>
-        <button onclick="upload()" class="btn btn-default pull-right">测试</button>
+        -->
+        <hr>
+        <button class="btn btn-primary" onclick="checkStatus()"><% if(lan == 'eng' ){%>Check for results<% }else{ %>查询结果<%}%></button>
+        <button ng-click="diag()" class="btn btn-default pull-right"><%if (lan =='eng'){%>Diagnose<%} else{%>诊断<%}%></button>
+        <!--<button onclick="upload()" class="btn btn-default pull-right">测试</button>-->
     </div>
     <div class="row" ng-if="diagnoseInfo!=''">
         {{ diagnoseInfo }}
