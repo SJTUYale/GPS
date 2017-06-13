@@ -288,6 +288,7 @@
             $scope.count = 0;
             if (row > 1){
                 for (var i = 1; i < row; i++){
+                    var tdid = $("#grouptable tr:eq(" + i + ") td:eq(0)").html();
                     var tdguid = $("#grouptable tr:eq(" + i + ") td:eq(1)").html();
                     var tdtag  = $("#grouptable tr:eq(" + i + ") td:eq(3)").html();
                     var tdpatient = $("#grouptable tr:eq(" + i + ") td:eq(4)").html();
@@ -298,6 +299,7 @@
                     if($scope.files[i-1].valid){
                         $scope.count += 1;
                         $scope.diagarray.push({
+                            Entryid: tdid,
                             guid: tdguid,
                             ispatient: $scope.files[i-1].ispatient,
                             tag: $scope.files[i-1].tag,
@@ -337,7 +339,7 @@
                 var oldguids = [];
                 var patients = [];
                 var normal = [];
-                var samples = []
+                var samples = [];
                 var selectcount = 0;
                 $scope.diagarray.forEach(function (d) {
                     if (d.selected) {
@@ -363,7 +365,7 @@
                     return;
                 }else if(oldguids.length == 1){
                     $.ajax({
-                        url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + oldguids[0] + '&patient' + patients.join('+') + '&normal' + normal.join('+'),
+                        url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + oldguids[0] + '&patient=' + patients.join('+') + '&normal=' + normal.join('+'),
                         success: function () {
                             $scope.checkguid = oldguids[0];
                             $scope.$apply();
@@ -382,7 +384,8 @@
                 }else {
                     var newguid = genguid();
                     //cgi para
-                    var para = "?user=guest&guids" + oldguids.join("+") + "&newguid=" + newguid;
+                    var para = "?user=guest&guids=" + oldguids.join("+") + "&newguid=" + newguid;
+                    alert(samples.join(','));
                     $.ajax({
                         url: 'http://202.121.178.141/cgi-bin/MDPA/Merge.cgi' + para,
                         success: function () {
@@ -391,10 +394,10 @@
                                 Guid: newguid,
                                 tag: 'merge',
                                 ispatient: false,
-                                vaild: false
+                                valid: true
                             });
                             $.ajax({
-                                url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + newguid + '&patient' + patients.join('+') + '&normal' + normal.join('+'),
+                                url: 'http://202.121.178.141/cgi-bin/Anno.cgi?offer=submit&user=guest&uid=' + newguid + '&patient=' + patients.join('+') + '&normal=' + normal.join('+'),
                                 success: function () {
                                     $scope.checkguid = newguid;
                                     $scope.$apply();
@@ -667,6 +670,15 @@
     </table>
     <div class="row">
         <hr>
+        <% if (lan == 'eng') {%>Examples can be download here:<%}else{%>实例文件<%} %>
+        <br/>
+        <a href="http://202.121.178.141/MDPA/GPS_data/examples/example.vcf" download="example.vcf">True positive set</a><br/>
+        <a href="http://202.121.178.141/MDPA/GPS_data/examples/Family.pass.vcf" download="Family.pass.vcf">Merged VCF of Family1</a><br/>
+        <a href="http://202.121.178.141/MDPA/GPS_data/examples/SRR1584524.pass.vcf" downlaod="Mother.vcf">Single VCF of mother</a><br/>
+        <a href="http://202.121.178.141/MDPA/GPS_data/examples/SRR1584526.pass.vcf" download="Father.vcf">Single VCF of father</a><br/>
+        <a href="http://202.121.178.141/MDPA/GPS_data/examples/SRR1584525.pass.vcf" download="Child.vcf">Single VCF of child</a><br/>
+        <!--
+        <hr>
         如数据量较大，请使用文件上传功能。支持以下类型（点击链接下载模版）：
         <br/>
         基因变异文件（
@@ -683,6 +695,8 @@
         <a href="<%=static_dir%>/caseTemplates/chrom.csv" download="chrom.csv">csv</a>、
         vcf格式）。
         <br/>
+        -->
+        <hr>
         <button class="btn btn-primary" onclick="checkStatus()"><% if(lan == 'eng' ){%>Check for results<% }else{ %>查询结果<%}%></button>
         <button ng-click="diag()" class="btn btn-default pull-right"><%if (lan =='eng'){%>Diagnose<%} else{%>诊断<%}%></button>
         <!--<button onclick="upload()" class="btn btn-default pull-right">测试</button>-->
